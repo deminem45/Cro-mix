@@ -53,7 +53,7 @@ export default function ProvidersPage() {
         <p style={{color:"#c2c0cf",lineHeight:1.7,marginBottom:0}}>Ključevi se smiju postavljati samo u Vercel Environment Variables, nikad u browseru ili GitHub kodu. Prije slanja audiozapisa vanjskom servisu provjerit ćemo dopuštenja, licencu, ograničenja datoteke i trošak. <b>Generiranje je trenutačno isključeno</b> dok stvarni adapter i spremanje rezultata ne budu testirani.</p>
       </section>
       <p style={{display:"flex",alignItems:"center",gap:8,color:"#8f909e",fontSize:12,marginTop:20}}><Gauge size={14}/> {note}</p>
-      <p style={{marginTop:8}}><Link href="/docs/AI-PROVIDERS.md" style={{color:"#c8c6ff"}}>Tehnički plan i usporedba API-ja</Link></p>
+      <p style={{marginTop:8}}><Link href="https://github.com/deminem45/Cro-mix/blob/main/docs/AI-PROVIDERS.md" style={{color:"#c8c6ff"}}>Tehnički plan i usporedba API-ja</Link></p>
     </div>
   </main>;
 }
