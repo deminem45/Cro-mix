@@ -1,0 +1,2 @@
+import { NextResponse } from "next/server";
+export async function GET() { return NextResponse.json({ok:true,app:"Cro-mix Studio",mode:process.env.MUSIC_API_URL&&process.env.MUSIC_API_KEY?"provider-configured":"demo",generationReady:false,note:"Provider adapter and audio job pipeline are not yet implemented."}); }
