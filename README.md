@@ -16,6 +16,10 @@ Run npm install, copy .env.example to .env.local, then run npm run dev. Open htt
 - Health endpoint and safe AI-provider catalog/readiness endpoint.
 - Free-first and paid provider research in docs/AI-PROVIDERS.md.
 
+## Private ACE-Step evaluation
+
+See [docs/ACE-STEP-PRIVATE-TESTING.md](docs/ACE-STEP-PRIVATE-TESTING.md) for the private-first evaluation path, benchmark checklist, GPU cost controls and the gate for connecting a real worker. This guide does not enable generation in the deployed app.
+
 ## Provider strategy
 Start with open-source/self-hosted tools for music generation experiments (ACE-Step 1.5), stem separation (Demucs), and deterministic audio processing (librosa/FFmpeg). These are not zero-cost to operate: GPU, storage and bandwidth can cost money. Use hosted free quotas only for limited testing. Add paid APIs for professional stem separation, mastering and generation only after verifying pricing, commercial terms and supported workflows.
 
