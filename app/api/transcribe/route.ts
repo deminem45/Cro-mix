@@ -81,7 +81,7 @@ async function transcribeWithOpenAI(audio: File, apiKey: string) {
 
 
 async function transcribeLocally(audio: File) {
-  const baseUrl = (process.env.LOCAL_ASR_URL || "http://127.0.0.1:8765").replace(/\\/$/, "");
+  const baseUrl = (process.env.LOCAL_ASR_URL || "http://127.0.0.1:8765").replace(/\/$/, "");
   const form = new FormData();
   form.append("audio", audio, audio.name || "audio.mp3");
   const response = await fetch(`${baseUrl}/transcribe`, {
