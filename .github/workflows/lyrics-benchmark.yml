@@ -1,0 +1,32 @@
+name: Lyrics benchmark tests
+
+on:
+  pull_request:
+    paths:
+      - "scripts/lyrics-benchmark/**"
+      - ".github/workflows/lyrics-benchmark.yml"
+  push:
+    branches:
+      - main
+      - "feat/lyrics-transcription-pipeline"
+    paths:
+      - "scripts/lyrics-benchmark/**"
+      - ".github/workflows/lyrics-benchmark.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python-tests:
+    name: Evaluate WER/CER test suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run benchmark unit tests
+        run: python -m unittest discover -s scripts/lyrics-benchmark -p "test_*.py" -v
