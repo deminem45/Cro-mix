@@ -10,6 +10,21 @@ const ALLOWED_TYPES = new Set([
   "audio/webm", "application/octet-stream"
 ]);
 
+type TimestampChunk = { text: string; timestamp: [number | null, number | null] };
+
+function parseChunks(value: unknown): TimestampChunk[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item): TimestampChunk[] => {
+    if (!item || typeof item !== "object") return [];
+    const chunk = item as { text?: unknown; timestamp?: unknown };
+    if (typeof chunk.text !== "string" || !Array.isArray(chunk.timestamp)) return [];
+    const start = chunk.timestamp[0];
+    const end = chunk.timestamp[1];
+    if (!(start === null || typeof start === "number") || !(end === null || typeof end === "number")) return [];
+    return [{ text: chunk.text, timestamp: [start, end] }];
+  });
+}
+
 export async function POST(request: Request) {
   const token = process.env.HUGGINGFACE_TOKEN;
   if (!token) {
@@ -36,13 +51,19 @@ export async function POST(request: Request) {
   }
 
   try {
+    // The Inference Providers ASR API accepts base64 audio when parameters are supplied.
+    // return_timestamps=true requests segment-level chunks; it does not guarantee word-level alignment.
+    const audioBase64 = Buffer.from(await audio.arrayBuffer()).toString("base64");
     const response = await fetch("https://router.huggingface.co/hf-inference/models/openai/whisper-large-v3", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        "Content-Type": audio.type || "application/octet-stream"
+        "Content-Type": "application/json"
       },
-      body: await audio.arrayBuffer(),
+      body: JSON.stringify({
+        inputs: audioBase64,
+        parameters: { return_timestamps: true }
+      }),
       signal: AbortSignal.timeout(25000),
       cache: "no-store"
     });
@@ -58,21 +79,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: detail, provider: "huggingface", retryable: status === 429 || status === 503 }, { status });
     }
 
-    const text = typeof result === "object" && result !== null && "text" in result
-      ? String((result as {text: unknown}).text ?? "").trim()
-      : Array.isArray(result) && result[0] && typeof result[0] === "object" && "text" in result[0]
-        ? String((result[0] as {text: unknown}).text ?? "").trim()
-        : "";
+    const first = Array.isArray(result) ? result[0] : result;
+    const record = typeof first === "object" && first !== null ? first as Record<string, unknown> : {};
+    const text = typeof record.text === "string" ? record.text.trim() : "";
+    const chunks = parseChunks(record.chunks);
     if (!text) {
       return NextResponse.json({ error: "Servis nije vratio tekst. Pokušaj kraći audio zapis ili drugi format." }, { status: 502 });
     }
-    return NextResponse.json({ text, provider: "huggingface", model: "openai/whisper-large-v3" }, {
-      headers: { "Cache-Control": "no-store" }
-    });
-  } catch (error) {
-    const timeout = error instanceof Error && error.name === "TimeoutError";
     return NextResponse.json({
-      error: timeout ? "Transkripcija je istekla zbog vremenskog ograničenja. Pokušaj kraći isječak." : "Servis za transkripciju trenutačno nije dostupan.",
+      text,
+      chunks,
+      timestampType: chunks.length ? "segment" : "unavailable",
+      provider: "huggingface",
+      model: "openai/whisper-large-v3"
+    }, { headers: { "Cache-Control": "no-store" } });
+  } catch (error) {
+    const timeout = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
+    return NextResponse.json({
+      error: timeout ? "Transkripcija je istekla zbog vremenskog ograničenja. Pokušaj kraći audio isječak." : "Servis za transkripciju trenutačno nije dostupan.",
       retryable: true
     }, { status: 504 });
   }
