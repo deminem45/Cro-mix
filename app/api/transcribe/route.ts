@@ -149,7 +149,9 @@ export async function POST(request: Request) {
       error: "Transkripcija nije konfigurirana. Za lokalni način postavi TRANSCRIPTION_PROVIDER=local i pokreni services/local-asr; ili konfiguriraj OpenAI API."
     }, { status: 503 });
   }
-  if (provider === "local" && !process.env.LOCAL_ASR_URL && process.env.VERCEL) {\n    return NextResponse.json({ error: "Lokalni ASR nije dostupan ovoj Vercel instanci. Pokreni Cro-mix lokalno ili postavi LOCAL_ASR_URL na privatni, sigurno dostupan ASR worker." }, { status: 503 });\n  }\n  if (provider === "openai" && !process.env.OPENAI_API_KEY) {
+  if (provider === "local" && !process.env.LOCAL_ASR_URL && process.env.VERCEL) {
+    return NextResponse.json({ error: "Lokalni ASR nije dostupan ovoj Vercel instanci. Pokreni Cro-mix lokalno ili postavi LOCAL_ASR_URL na privatni, sigurno dostupan ASR worker." }, { status: 503 });
+  }
     return NextResponse.json({ error: "Nedostaje OPENAI_API_KEY za odabranog pružatelja transkripcije." }, { status: 503 });
   }
   if (provider === "huggingface" && !process.env.HUGGINGFACE_TOKEN) {
