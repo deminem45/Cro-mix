@@ -13,6 +13,10 @@ type RefineResult = {
   warnings: string[];
 };
 
+function lexicalTokens(value: string): string[] {
+  return value.match(/[\\p{L}\\p{M}\\p{N}]+(?:['’][\\p{L}\\p{M}\\p{N}]+)*/gu) ?? [];
+}
+
 function parseResult(value: unknown): RefineResult | null {
   if (!value || typeof value !== "object") return null;
   const obj = value as Record<string, unknown>;
@@ -98,6 +102,15 @@ Never invent words or claim you heard audio; you receive text only. Keep section
     const result = parseResult(parsed);
     if (!result || !result.refinedText.trim()) {
       return NextResponse.json({ error: "LLM nije vratio očekivanu strukturu lyrics rezultata." }, { status: 502 });
+    }
+    if (mode === "format_only") {
+      const sourceTokens = lexicalTokens(text).map((token) => token.toLocaleLowerCase("und"));
+      const outputTokens = lexicalTokens(result.refinedText).map((token) => token.toLocaleLowerCase("und"));
+      if (sourceTokens.length !== outputTokens.length || sourceTokens.some((token, index) => token !== outputTokens[index])) {
+        result.refinedText = text;
+        result.changes = [];
+        result.warnings = [...result.warnings, "Model je promijenio ili dodao riječi u načinu Format only; vraćen je izvorni tekst radi očuvanja sadržaja."].slice(0, 30);
+      }
     }
     return NextResponse.json({
       ...result,
