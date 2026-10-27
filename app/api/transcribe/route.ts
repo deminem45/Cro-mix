@@ -79,6 +79,38 @@ async function transcribeWithOpenAI(audio: File, apiKey: string) {
   };
 }
 
+
+async function transcribeLocally(audio: File) {
+  const baseUrl = (process.env.LOCAL_ASR_URL || "http://127.0.0.1:8765").replace(/\\/$/, "");
+  const form = new FormData();
+  form.append("audio", audio, audio.name || "audio.mp3");
+  const response = await fetch(`${baseUrl}/transcribe`, {
+    method: "POST",
+    body: form,
+    signal: AbortSignal.timeout(Number(process.env.LOCAL_ASR_TIMEOUT_MS || 600000)),
+    cache: "no-store"
+  });
+  const raw = await response.text();
+  let result: unknown;
+  try { result = JSON.parse(raw); } catch { result = { message: raw.slice(0, 1000) }; }
+  if (!response.ok) {
+    throw Object.assign(new Error(errorMessage(result, "Local ASR service failed.")), {
+      status: response.status,
+      retryable: response.status >= 500
+    });
+  }
+  const record = result && typeof result === "object" ? result as Record<string, unknown> : {};
+  const chunks = parseChunks(record.chunks);
+  return {
+    text: typeof record.text === "string" ? record.text.trim() : "",
+    chunks,
+    timestampType: chunks.length ? "segment" : "unavailable",
+    provider: "local-whisper",
+    model: typeof record.model === "string" ? record.model : "small",
+    language: typeof record.language === "string" ? record.language : undefined
+  };
+}
+
 async function transcribeWithHuggingFace(audio: File, token: string) {
   // HF Inference Providers accepts base64 audio for ASR with return_timestamps.
   const audioBase64 = Buffer.from(await audio.arrayBuffer()).toString("base64");
@@ -111,13 +143,13 @@ async function transcribeWithHuggingFace(audio: File, token: string) {
 }
 
 export async function POST(request: Request) {
-  const provider = (process.env.TRANSCRIPTION_PROVIDER || (process.env.OPENAI_API_KEY ? "openai" : process.env.HUGGINGFACE_TOKEN ? "huggingface" : "")).toLowerCase();
-  if (!["openai", "huggingface"].includes(provider)) {
+  const provider = (process.env.TRANSCRIPTION_PROVIDER || (process.env.LOCAL_ASR_URL ? "local" : process.env.OPENAI_API_KEY ? "openai" : process.env.HUGGINGFACE_TOKEN ? "huggingface" : "")).toLowerCase();
+  if (!["local", "openai", "huggingface"].includes(provider)) {
     return NextResponse.json({
-      error: "Transkripcija nije konfigurirana. Postavi TRANSCRIPTION_PROVIDER=openai i OPENAI_API_KEY. Hugging Face nije obavezan."
+      error: "Transkripcija nije konfigurirana. Za lokalni način postavi TRANSCRIPTION_PROVIDER=local i pokreni services/local-asr; ili konfiguriraj OpenAI API."
     }, { status: 503 });
   }
-  if (provider === "openai" && !process.env.OPENAI_API_KEY) {
+  if (provider === "local" && !process.env.LOCAL_ASR_URL && process.env.VERCEL) {\n    return NextResponse.json({ error: "Lokalni ASR nije dostupan ovoj Vercel instanci. Pokreni Cro-mix lokalno ili postavi LOCAL_ASR_URL na privatni, sigurno dostupan ASR worker." }, { status: 503 });\n  }\n  if (provider === "openai" && !process.env.OPENAI_API_KEY) {
     return NextResponse.json({ error: "Nedostaje OPENAI_API_KEY za odabranog pružatelja transkripcije." }, { status: 503 });
   }
   if (provider === "huggingface" && !process.env.HUGGINGFACE_TOKEN) {
