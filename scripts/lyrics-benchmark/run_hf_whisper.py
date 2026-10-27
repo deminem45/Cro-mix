@@ -116,7 +116,7 @@ def main() -> int:
             "id": row["id"],
             "language": row["language"],
             "reference_path": row.get("reference_path", ""),
-            "hypothesis_path": f"hypotheses/{filename}",
+            "hypothesis_path": str((hypotheses / filename).resolve()),
             "model": args.model_label,
             "source": row["source"],
         })
